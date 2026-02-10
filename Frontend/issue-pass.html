@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="midnight">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Issue Gate Pass | RICO Visitor Portal</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body data-page="issue-pass">
+    <div class="particles-layer" id="particlesLayer" aria-hidden="true"></div>
+
+    <header class="topbar glass-panel reveal">
+      <a class="topbar-home" href="index.html" aria-label="Home">RICO</a>
+      <div class="title-center">
+        <h1 class="portal-title">RICO VISITOR PORTAL</h1>
+        <span class="title-underline"></span>
+      </div>
+      <div class="topbar-right">
+        <div class="live-clock" id="liveClock">--:--:--</div>
+        <div class="theme-switcher">
+          <label for="themeSelect">Theme</label>
+          <select id="themeSelect" aria-label="Theme selector">
+            <option value="ocean">Ocean</option>
+            <option value="midnight" selected>Midnight</option>
+            <option value="obsidian">Obsidian Core</option>
+            <option value="nebula">Nebula Noir</option>
+            <option value="mint">Mint</option>
+            <option value="sunset">Sunset</option>
+            <option value="skyline">Skyline Frost</option>
+            <option value="sunbeam">Sunbeam Haze</option>
+            <option value="sandstone">Sandstone Calm</option>
+          </select>
+        </div>
+      </div>
+    </header>
+
+    <nav class="module-nav reveal" aria-label="Primary">
+      <a href="index.html">Home</a>
+      <a href="check-visitor.html">Check Visitor</a>
+      <a href="validate-pass.html">Validate Pass</a>
+      <a class="active" href="issue-pass.html">Issue Gate Pass</a>
+      <a href="today-visitors.html">Today's Visitors</a>
+      <a href="analytics.html">Analytics</a>
+      <a href="vip-entry.html">VIP Entry</a>
+    </nav>
+
+    <main class="page-shell">
+      <section class="page-card glass-panel reveal">
+        <div class="section-head">
+          <h2>New Visitor Entry and Pass Issuance</h2>
+          <span class="chip">Admin Approval Required</span>
+        </div>
+
+        <form id="createPassForm" class="form-grid">
+          <label>
+            Full Name
+            <input type="text" id="name" required />
+          </label>
+          <label>
+            Phone Number
+            <input type="tel" id="phone" required />
+          </label>
+
+          <label>
+            Type of Visitor
+            <select id="visitorType">
+              <option value="Visitor" selected>Visitor</option>
+              <option value="Customer">Customer</option>
+              <option value="Vendor">Vendor</option>
+              <option value="Maintenance">Maintenance</option>
+            </select>
+          </label>
+
+          <label>
+            Company
+            <select id="companyType">
+              <option value="">Optional</option>
+              <option value="RICO">RICO</option>
+              <option value="Other">Other</option>
+            </select>
+          </label>
+
+          <label id="ricoUnitWrapper" class="hidden">
+            RICO Unit
+            <select id="ricoUnit">
+              <option value="">Select Unit</option>
+              <option value="Bawal">Bawal</option>
+              <option value="Pathredi">Pathredi</option>
+              <option value="Dharuhera">Dharuhera</option>
+              <option value="Chennai">Chennai</option>
+              <option value="Hosur">Hosur</option>
+              <option value="Gurugram">Gurugram</option>
+              <option value="Haridwar">Haridwar</option>
+            </select>
+          </label>
+
+          <label id="otherCompanyWrapper" class="hidden">
+            Enter Company Name
+            <input type="text" id="otherCompanyName" placeholder="Enter company name" />
+          </label>
+
+          <label>
+            Purpose of Visit
+            <select id="visitType" required>
+              <option value="">Select Purpose</option>
+              <option value="Business Meeting">Business Meeting</option>
+              <option value="Interview">Interview</option>
+              <option value="Vendor Discussion">Vendor Discussion</option>
+              <option value="Audit">Audit</option>
+              <option value="Maintenance">Maintenance</option>
+              <option value="Other">Other</option>
+            </select>
+          </label>
+
+          <label>
+            Person to Meet
+            <input type="text" id="personToMeet" required />
+          </label>
+
+          <label>
+            Department
+            <select id="department">
+              <option value="">Optional</option>
+              <option value="IT">IT</option>
+              <option value="HR">HR</option>
+              <option value="Quality">Quality</option>
+              <option value="R&D">R&amp;D</option>
+              <option value="Sales and Marketing">Sales and Marketing</option>
+              <option value="Production/Manufacturing">Production/Manufacturing</option>
+            </select>
+          </label>
+
+          <label>
+            Carrying Laptop
+            <select id="carriesLaptop">
+              <option value="">Optional</option>
+              <option value="No">No</option>
+              <option value="Yes">Yes</option>
+            </select>
+          </label>
+
+          <label id="laptopSerialWrapper" class="hidden">
+            Laptop Serial Number
+            <input type="text" id="laptopSerialNumber" placeholder="Enter laptop serial number" />
+          </label>
+
+          <label>
+            ID Proof Type
+            <select id="idProofType">
+              <option value="">Optional</option>
+              <option value="Aadhaar">Aadhaar</option>
+              <option value="PAN">PAN</option>
+              <option value="Driving License">Driving License</option>
+              <option value="Passport">Passport</option>
+              <option value="Voter ID">Voter ID</option>
+              <option value="Employee ID">Employee ID</option>
+            </select>
+          </label>
+
+          <label>
+            ID Proof Number
+            <input type="text" id="idProofNumber" />
+          </label>
+
+          <label class="span-2">
+            Remarks
+            <textarea id="remarks" rows="2" placeholder="Optional remarks"></textarea>
+          </label>
+
+          <button class="btn-primary span-2" type="submit">Issue Gate Pass</button>
+        </form>
+
+        <div id="passIssuedBanner" class="pass-banner hidden">
+          <span>Issued Pass ID</span>
+          <strong id="issuedPassId"></strong>
+        </div>
+      </section>
+    </main>
+
+    <div id="authModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+      <div class="modal-card glass-panel">
+        <h3 id="authTitle">Enter security password</h3>
+        <p id="authMessage" class="modal-message">Confirm secure action</p>
+        <input type="password" id="securityPassword" placeholder="Enter password" />
+        <div class="modal-actions">
+          <button id="approveButton" class="btn-primary">Confirm</button>
+          <button id="cancelButton" class="btn-secondary">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="toastContainer" class="toast-container"></div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
+

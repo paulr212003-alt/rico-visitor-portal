@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="midnight">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Check Visitor | RICO Visitor Portal</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body data-page="check-visitor">
+    <div class="particles-layer" id="particlesLayer" aria-hidden="true"></div>
+
+    <header class="topbar glass-panel reveal">
+      <a class="topbar-home" href="index.html" aria-label="Home">RICO</a>
+      <div class="title-center">
+        <h1 class="portal-title">RICO VISITOR PORTAL</h1>
+        <span class="title-underline"></span>
+      </div>
+      <div class="topbar-right">
+        <div class="live-clock" id="liveClock">--:--:--</div>
+        <div class="theme-switcher">
+          <label for="themeSelect">Theme</label>
+          <select id="themeSelect" aria-label="Theme selector">
+            <option value="ocean">Ocean</option>
+            <option value="midnight" selected>Midnight</option>
+            <option value="obsidian">Obsidian Core</option>
+            <option value="nebula">Nebula Noir</option>
+            <option value="mint">Mint</option>
+            <option value="sunset">Sunset</option>
+            <option value="skyline">Skyline Frost</option>
+            <option value="sunbeam">Sunbeam Haze</option>
+            <option value="sandstone">Sandstone Calm</option>
+          </select>
+        </div>
+      </div>
+    </header>
+
+    <nav class="module-nav reveal" aria-label="Primary">
+      <a href="index.html">Home</a>
+      <a class="active" href="check-visitor.html">Check Visitor</a>
+      <a href="validate-pass.html">Validate Pass</a>
+      <a href="issue-pass.html">Issue Gate Pass</a>
+      <a href="today-visitors.html">Today's Visitors</a>
+      <a href="analytics.html">Analytics</a>
+      <a href="vip-entry.html">VIP Entry</a>
+    </nav>
+
+    <main class="page-shell">
+      <section class="page-card glass-panel reveal">
+        <div class="section-head">
+          <h2>Visitor History Check</h2>
+          <span class="chip">Search by Name or Phone</span>
+        </div>
+        <form id="checkVisitorForm" class="form-grid">
+          <label>
+            Search by Name
+            <input type="text" id="checkName" list="checkNameSuggestions" placeholder="Type full or partial name" />
+            <datalist id="checkNameSuggestions"></datalist>
+          </label>
+          <label>
+            Search by Phone
+            <input type="tel" id="checkPhone" placeholder="Enter phone number" />
+          </label>
+          <button type="submit" class="btn-primary span-2">Check Existing Visitor</button>
+        </form>
+        <p id="historyResult" class="result-text">Enter name or phone. Both fields are independent.</p>
+      </section>
+
+      <section class="page-card glass-panel reveal" id="historyDetailsCard">
+        <div class="section-head">
+          <h2>Matched Visitor</h2>
+          <span class="chip" id="historyBadge">No match</span>
+        </div>
+        <div id="historyDetails" class="details-grid">
+          <p class="empty-row">No visitor selected.</p>
+        </div>
+        <div class="inline-actions">
+          <a class="btn-secondary" id="renewPassLink" href="issue-pass.html">Renew / Create Gate Pass</a>
+          <a class="btn-secondary" id="validatePassLink" href="validate-pass.html">Go to Validation</a>
+          <button class="btn-secondary" id="historyMarkExitBtn" type="button">Mark Exit</button>
+        </div>
+      </section>
+    </main>
+
+    <div id="toastContainer" class="toast-container"></div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
+

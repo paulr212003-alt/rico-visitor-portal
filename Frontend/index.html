@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="midnight">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>RICO Visitor Portal</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body data-page="home">
+    <div class="particles-layer" id="particlesLayer" aria-hidden="true"></div>
+
+    <header class="topbar glass-panel reveal">
+      <a class="topbar-home" href="index.html" aria-label="Home">RICO</a>
+      <div class="title-center">
+        <h1 class="portal-title">RICO VISITOR PORTAL</h1>
+        <span class="title-underline"></span>
+      </div>
+      <div class="topbar-right">
+        <div class="live-clock" id="liveClock">--:--:--</div>
+        <div class="theme-switcher">
+          <label for="themeSelect">Theme</label>
+          <select id="themeSelect" aria-label="Theme selector">
+            <option value="ocean">Ocean</option>
+            <option value="midnight" selected>Midnight</option>
+            <option value="obsidian">Obsidian Core</option>
+            <option value="nebula">Nebula Noir</option>
+            <option value="mint">Mint</option>
+            <option value="sunset">Sunset</option>
+            <option value="skyline">Skyline Frost</option>
+            <option value="sunbeam">Sunbeam Haze</option>
+            <option value="sandstone">Sandstone Calm</option>
+          </select>
+        </div>
+      </div>
+    </header>
+
+    <main class="page-shell">
+      <section class="hero-panel home-hero glass-panel reveal">
+        <div class="hero-copy">
+          <p class="hero-kicker">AI Access Control Dashboard</p>
+          <h2>Reception Control Center</h2>
+          <p class="hero-subtext">
+            Real-time visitor orchestration with secure gate workflows and intelligent visual guidance.
+          </p>
+          <div class="hero-status-row">
+            <span class="status-pill"><i></i> Live Security Matrix</span>
+            <span class="status-pill"><i></i> Always-On Monitoring</span>
+          </div>
+        </div>
+        <div class="hero-ai-scene" id="heroAiScene" aria-hidden="true">
+          <div class="scan-grid"></div>
+          <span class="ai-orb orb-a"></span>
+          <span class="ai-orb orb-b"></span>
+          <span class="ai-orb orb-c"></span>
+          <span class="ai-ring ring-a"></span>
+          <span class="ai-ring ring-b"></span>
+          <span class="ai-beam"></span>
+        </div>
+      </section>
+
+      <section class="home-grid reveal" id="homeGridMenu">
+        <a class="menu-link" href="check-visitor.html">
+          <article class="menu-card">
+            <span class="menu-icon">CV</span>
+            <span class="menu-label">Check Visitor</span>
+          </article>
+        </a>
+        <a class="menu-link" href="validate-pass.html">
+          <article class="menu-card">
+            <span class="menu-icon">VP</span>
+            <span class="menu-label">Validate Pass</span>
+          </article>
+        </a>
+        <a class="menu-link" href="issue-pass.html">
+          <article class="menu-card">
+            <span class="menu-icon">IG</span>
+            <span class="menu-label">Issue Gate Pass</span>
+          </article>
+        </a>
+        <a class="menu-link" href="today-visitors.html">
+          <article class="menu-card">
+            <span class="menu-icon">TV</span>
+            <span class="menu-label">Today's Visitors</span>
+          </article>
+        </a>
+        <a class="menu-link" href="analytics.html">
+          <article class="menu-card">
+            <span class="menu-icon">AN</span>
+            <span class="menu-label">Analytics</span>
+          </article>
+        </a>
+      </section>
+
+      <section class="vip-callout glass-panel reveal">
+        <div>
+          <h3>VIP Entry System</h3>
+          <p>Generate VIP access IDs and issue VIP gate passes without normal admin approval.</p>
+        </div>
+        <a class="vip-btn" href="vip-entry.html">VIP Visitor</a>
+      </section>
+
+      <section class="logo-ticker glass-panel reveal" aria-label="Company logo ticker">
+        <div class="ticker-track">
+          <div class="ticker-group">
+            <!-- INSERT CAR LOGOS HERE -->
+            <img class="logo-item" src="./assets/logos/BMW.png" alt="BMW" />
+            <img class="logo-item" src="./assets/logos/GM.png" alt="GM" />
+            <img class="logo-item" src="./assets/logos/Honda.png" alt="Honda" />
+            <img class="logo-item" src="./assets/logos/jAGUAR.png" alt="Jaguar" />
+            <img class="logo-item" src="./assets/logos/KIA.png" alt="KIA" />
+            <img class="logo-item" src="./assets/logos/Land%20Rover.png" alt="Land Rover" />
+            <img class="logo-item" src="./assets/logos/Nissan.png" alt="Nissan" />
+            <img class="logo-item" src="./assets/logos/Volvo.png" alt="Volvo" />
+          </div>
+          <div class="ticker-group" aria-hidden="true">
+            <img class="logo-item" src="./assets/logos/BMW.png" alt="" />
+            <img class="logo-item" src="./assets/logos/GM.png" alt="" />
+            <img class="logo-item" src="./assets/logos/Honda.png" alt="" />
+            <img class="logo-item" src="./assets/logos/jAGUAR.png" alt="" />
+            <img class="logo-item" src="./assets/logos/KIA.png" alt="" />
+            <img class="logo-item" src="./assets/logos/Land%20Rover.png" alt="" />
+            <img class="logo-item" src="./assets/logos/Nissan.png" alt="" />
+            <img class="logo-item" src="./assets/logos/Volvo.png" alt="" />
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <div id="toastContainer" class="toast-container"></div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
+

@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="midnight">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Today's Visitors | RICO Visitor Portal</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body data-page="today-visitors">
+    <div class="particles-layer" id="particlesLayer" aria-hidden="true"></div>
+
+    <header class="topbar glass-panel reveal">
+      <a class="topbar-home" href="index.html" aria-label="Home">RICO</a>
+      <div class="title-center">
+        <h1 class="portal-title">RICO VISITOR PORTAL</h1>
+        <span class="title-underline"></span>
+      </div>
+      <div class="topbar-right">
+        <div class="live-clock" id="liveClock">--:--:--</div>
+        <div class="theme-switcher">
+          <label for="themeSelect">Theme</label>
+          <select id="themeSelect" aria-label="Theme selector">
+            <option value="ocean">Ocean</option>
+            <option value="midnight" selected>Midnight</option>
+            <option value="obsidian">Obsidian Core</option>
+            <option value="nebula">Nebula Noir</option>
+            <option value="mint">Mint</option>
+            <option value="sunset">Sunset</option>
+            <option value="skyline">Skyline Frost</option>
+            <option value="sunbeam">Sunbeam Haze</option>
+            <option value="sandstone">Sandstone Calm</option>
+          </select>
+        </div>
+      </div>
+    </header>
+
+    <nav class="module-nav reveal" aria-label="Primary">
+      <a href="index.html">Home</a>
+      <a href="check-visitor.html">Check Visitor</a>
+      <a href="validate-pass.html">Validate Pass</a>
+      <a href="issue-pass.html">Issue Gate Pass</a>
+      <a class="active" href="today-visitors.html">Today's Visitors</a>
+      <a href="analytics.html">Analytics</a>
+      <a href="vip-entry.html">VIP Entry</a>
+    </nav>
+
+    <main class="page-shell">
+      <section class="page-card glass-panel reveal">
+        <div class="section-head">
+          <h2>Today's Visitors</h2>
+          <div class="inline-actions">
+            <span class="chip" id="todayCount">0 entries</span>
+            <button id="refreshTodayBtn" class="btn-secondary" type="button">Refresh</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Pass ID</th>
+                <th>Name</th>
+                <th>Phone</th>
+                <th>Department</th>
+                <th>Time In</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="todayVisitorsBody">
+              <tr>
+                <td colspan="7" class="empty-row">No entries yet.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <div id="authModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+      <div class="modal-card glass-panel">
+        <h3 id="authTitle">Enter security password</h3>
+        <p id="authMessage" class="modal-message">Confirm secure action</p>
+        <input type="password" id="securityPassword" placeholder="Enter password" />
+        <div class="modal-actions">
+          <button id="approveButton" class="btn-primary">Confirm</button>
+          <button id="cancelButton" class="btn-secondary">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="toastContainer" class="toast-container"></div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
+

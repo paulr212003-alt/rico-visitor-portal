@@ -1,0 +1,28 @@
+{
+  "name": "visitor-portal",
+  "version": "1.0.0",
+  "description": "",
+  "main": "Backend/server.js",
+  "scripts": {
+    "start": "node Backend/server.js",
+    "dev": "nodemon Backend/server.js",
+    "test": "echo \"No tests configured\""
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "dependencies": {
+    "body-parser": "^2.2.2",
+    "cors": "^2.8.6",
+    "dotenv": "^17.2.4",
+    "express": "^5.2.1",
+    "mongoose": "^9.1.6"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.11"
+  }
+}

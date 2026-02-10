@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="midnight">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>VIP Entry | RICO Visitor Portal</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body data-page="vip-entry">
+    <div class="particles-layer" id="particlesLayer" aria-hidden="true"></div>
+
+    <header class="topbar glass-panel reveal">
+      <a class="topbar-home" href="index.html" aria-label="Home">RICO</a>
+      <div class="title-center">
+        <h1 class="portal-title">RICO VISITOR PORTAL</h1>
+        <span class="title-underline"></span>
+      </div>
+      <div class="topbar-right">
+        <div class="live-clock" id="liveClock">--:--:--</div>
+        <div class="theme-switcher">
+          <label for="themeSelect">Theme</label>
+          <select id="themeSelect" aria-label="Theme selector">
+            <option value="ocean">Ocean</option>
+            <option value="midnight" selected>Midnight</option>
+            <option value="obsidian">Obsidian Core</option>
+            <option value="nebula">Nebula Noir</option>
+            <option value="mint">Mint</option>
+            <option value="sunset">Sunset</option>
+            <option value="skyline">Skyline Frost</option>
+            <option value="sunbeam">Sunbeam Haze</option>
+            <option value="sandstone">Sandstone Calm</option>
+          </select>
+        </div>
+      </div>
+    </header>
+
+    <nav class="module-nav reveal" aria-label="Primary">
+      <a href="index.html">Home</a>
+      <a href="check-visitor.html">Check Visitor</a>
+      <a href="validate-pass.html">Validate Pass</a>
+      <a href="issue-pass.html">Issue Gate Pass</a>
+      <a href="today-visitors.html">Today's Visitors</a>
+      <a href="analytics.html">Analytics</a>
+      <a class="active" href="vip-entry.html">VIP Entry</a>
+    </nav>
+
+    <main class="page-shell">
+      <section class="page-card glass-panel reveal">
+        <div class="section-head">
+          <h2>Generate VIP Access ID</h2>
+          <span class="chip">Admin Password Required</span>
+        </div>
+        <form id="vipGenerateForm" class="form-grid">
+          <label>
+            VIP Label
+            <input type="text" id="vipLabel" placeholder="Ex: Board Member" />
+          </label>
+          <label>
+            Admin Password
+            <input type="password" id="vipGeneratePassword" placeholder="Enter admin password" required />
+          </label>
+          <button class="btn-primary span-2" type="submit">Generate VIP Pass ID Unique</button>
+        </form>
+        <div id="vipGenerateBanner" class="pass-banner hidden">
+          <span>Generated VIP Access ID</span>
+          <strong id="generatedVipAccessId"></strong>
+        </div>
+      </section>
+
+      <section class="page-card glass-panel reveal">
+        <div class="section-head">
+          <h2>VIP Visitor Instant Entry</h2>
+          <span class="chip">Skips Normal Approval</span>
+        </div>
+        <form id="vipIssueForm" class="form-grid">
+          <label>
+            Please enter your pass or pass ID
+            <input type="text" id="vipIssueAccessId" placeholder="VIPKEY-YYYYMMDD-0001" required />
+          </label>
+          <div class="form-helper">This creates a VIP gate pass directly if the ID is valid and active.</div>
+          <button class="btn-primary span-2" type="submit">Issue VIP Gate Pass</button>
+        </form>
+        <div id="vipIssueBanner" class="pass-banner hidden">
+          <span>Issued VIP Gate Pass</span>
+          <strong id="issuedVipPassId"></strong>
+        </div>
+      </section>
+
+      <section class="page-card glass-panel reveal">
+        <div class="section-head">
+          <h2>VIP In/Out Verification</h2>
+          <span class="chip">Track Time In and Time Out</span>
+        </div>
+        <form id="vipVerifyForm" class="form-grid">
+          <label>
+            Gate Pass ID
+            <input type="text" id="vipVerifyPassId" placeholder="VIP-YYYYMMDD-0001" />
+          </label>
+          <label>
+            VIP Access ID
+            <input type="text" id="vipVerifyAccessId" placeholder="VIPKEY-YYYYMMDD-0001" />
+          </label>
+          <button class="btn-primary" type="submit">Verify VIP</button>
+          <button class="btn-secondary" id="vipCheckoutBtn" type="button">Mark VIP Exit</button>
+        </form>
+        <p id="vipVerifyResult" class="result-text">Enter pass ID or VIP access ID.</p>
+        <div id="vipVerifyDetails" class="details-grid">
+          <p class="empty-row">No VIP verification result yet.</p>
+        </div>
+      </section>
+
+      <section class="page-card glass-panel reveal">
+        <div class="section-head">
+          <h2>Recent VIP Logs</h2>
+          <div class="inline-actions">
+            <span class="chip" id="vipLogsCount">0 entries</span>
+            <button id="refreshVipLogsBtn" class="btn-secondary" type="button">Refresh</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Pass ID</th>
+                <th>VIP Access ID</th>
+                <th>Name</th>
+                <th>Status</th>
+                <th>Time In</th>
+                <th>Time Out</th>
+              </tr>
+            </thead>
+            <tbody id="vipLogsBody">
+              <tr>
+                <td colspan="6" class="empty-row">No VIP logs yet.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <div id="toastContainer" class="toast-container"></div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
+
