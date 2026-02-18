@@ -22,6 +22,7 @@ const cancelButton = document.getElementById("cancelButton");
 let authAction = null;
 let pendingPassPayload = null;
 let pendingDeletePassId = null;
+let activePassesAdminPassword = "";
 
 let analyticsRange = 7;
 let trendChart = null;
@@ -976,6 +977,188 @@ async function loadTodayVisitors() {
   }
 }
 
+function renderActivePasses(visitors) {
+  const activePassesBody = document.getElementById("activePassesBody");
+  if (!activePassesBody) return;
+
+  activePassesBody.innerHTML = "";
+
+  if (!Array.isArray(visitors) || visitors.length === 0) {
+    activePassesBody.innerHTML =
+      '<tr><td colspan="8" class="empty-row">No active passes found.</td></tr>';
+    return;
+  }
+
+  for (const visitor of visitors) {
+    const passId = visitor.passId || "";
+    const phone = visitor.phone || "";
+    const row = document.createElement("tr");
+
+    row.innerHTML = `
+      <td>${passId || "-"}</td>
+      <td>${visitor.name || "-"}</td>
+      <td>${visitor.phone || "-"}</td>
+      <td>${visitor.department || "-"}</td>
+      <td>${visitor.visitType || "-"}</td>
+      <td>${formatDateTime(visitor.timeIn || visitor.date)}</td>
+      <td>${visitor.status || "active"}</td>
+      <td>
+        <button type="button" class="table-exit-btn" data-pass-id="${passId}" data-phone="${phone}">
+          Mark Exit
+        </button>
+      </td>
+    `;
+
+    activePassesBody.appendChild(row);
+  }
+}
+
+async function loadActivePasses(adminPassword = activePassesAdminPassword) {
+  const activePassesCount = document.getElementById("activePassesCount");
+
+  if (!adminPassword) {
+    throw new Error("Enter security password first.");
+  }
+
+  const data = await apiRequest("/activePasses", {
+    method: "GET",
+    headers: {
+      "x-admin-password": adminPassword,
+    },
+  });
+
+  if (activePassesCount) activePassesCount.textContent = `${data.count || 0} active passes`;
+  renderActivePasses(data.visitors || []);
+  return data;
+}
+
+function initActivePassesPage() {
+  const unlockForm = document.getElementById("activePassesUnlockForm");
+  const passwordInput = document.getElementById("activePassesPassword");
+  const activePassesResult = document.getElementById("activePassesResult");
+  const activePassesPanel = document.getElementById("activePassesPanel");
+  const refreshActivePassesBtn = document.getElementById("refreshActivePassesBtn");
+  const lockActivePassesBtn = document.getElementById("lockActivePassesBtn");
+  const activePassesBody = document.getElementById("activePassesBody");
+  const activePassesCount = document.getElementById("activePassesCount");
+
+  if (!unlockForm || !passwordInput || !activePassesPanel || !activePassesBody) return;
+
+  const lockPanel = () => {
+    activePassesAdminPassword = "";
+    activePassesPanel.classList.add("hidden");
+    renderActivePasses([]);
+    if (activePassesCount) activePassesCount.textContent = "Locked";
+    setResult(activePassesResult, "Enter security password to unlock active passes.");
+  };
+
+  unlockForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const adminPassword = String(passwordInput.value || "").trim();
+    if (!adminPassword) {
+      setResult(activePassesResult, "Enter security password.", "error");
+      return;
+    }
+
+    try {
+      await loadActivePasses(adminPassword);
+      activePassesAdminPassword = adminPassword;
+      activePassesPanel.classList.remove("hidden");
+      setResult(activePassesResult, "Access granted. Active passes loaded.", "success");
+      showToast("Active passes loaded");
+    } catch (error) {
+      activePassesAdminPassword = "";
+      activePassesPanel.classList.add("hidden");
+      renderActivePasses([]);
+
+      if (error.status === 401) {
+        setResult(activePassesResult, "Unauthorized", "error");
+        showToast("Unauthorized", true);
+      } else {
+        setResult(activePassesResult, error.message, "error");
+        showToast(error.message, true);
+      }
+    }
+  });
+
+  if (refreshActivePassesBtn) {
+    refreshActivePassesBtn.addEventListener("click", async () => {
+      if (!activePassesAdminPassword) {
+        setResult(activePassesResult, "Unlock page first to refresh active passes.", "error");
+        return;
+      }
+
+      try {
+        await loadActivePasses(activePassesAdminPassword);
+        setResult(activePassesResult, "Active passes refreshed.", "success");
+      } catch (error) {
+        if (error.status === 401) {
+          setResult(activePassesResult, "Unauthorized", "error");
+          showToast("Unauthorized", true);
+          lockPanel();
+        } else {
+          setResult(activePassesResult, error.message, "error");
+          showToast(error.message, true);
+        }
+      }
+    });
+  }
+
+  if (lockActivePassesBtn) {
+    lockActivePassesBtn.addEventListener("click", () => {
+      lockPanel();
+      passwordInput.value = "";
+      showToast("Active pass window locked");
+    });
+  }
+
+  activePassesBody.addEventListener("click", async (event) => {
+    const exitButton = event.target.closest(".table-exit-btn");
+    if (!exitButton) return;
+
+    if (!activePassesAdminPassword) {
+      setResult(activePassesResult, "Unlock page first to mark exit.", "error");
+      return;
+    }
+
+    const passId = String(exitButton.dataset.passId || "").trim();
+    const phone = String(exitButton.dataset.phone || "").trim();
+
+    if (!passId) {
+      showToast("Pass ID not found", true);
+      return;
+    }
+
+    try {
+      const data = await apiRequest("/markExit", {
+        method: "POST",
+        headers: {
+          "x-admin-password": activePassesAdminPassword,
+        },
+        body: JSON.stringify({
+          passId,
+          phone,
+        }),
+      });
+
+      showToast(data.message || "Exit marked successfully.");
+      if (shouldAnnounceExit(data.message)) announceVisitorExited();
+      await loadActivePasses(activePassesAdminPassword);
+      setResult(activePassesResult, `Exit marked for ${passId}.`, "success");
+    } catch (error) {
+      if (error.status === 401) {
+        setResult(activePassesResult, "Unauthorized", "error");
+        showToast("Unauthorized", true);
+        lockPanel();
+      } else {
+        setResult(activePassesResult, error.message, "error");
+        showToast(error.message, true);
+      }
+    }
+  });
+}
+
 function initTodayVisitorsPage() {
   const todayVisitorsBody = document.getElementById("todayVisitorsBody");
   const refreshTodayBtn = document.getElementById("refreshTodayBtn");
@@ -1493,6 +1676,9 @@ function initPage() {
       break;
     case "today-visitors":
       initTodayVisitorsPage();
+      break;
+    case "active-passes":
+      initActivePassesPage();
       break;
     case "analytics":
       initAnalyticsPage();

@@ -443,6 +443,32 @@ router.post("/markExit", async (req, res) => {
   }
 });
 
+router.get("/activePasses", async (req, res) => {
+  try {
+    const adminPassword = getAdminPassword(req);
+    if (adminPassword !== ADMIN_PASSWORD) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+    const visitors = await Visitor.find({
+      $or: [
+        { status: { $regex: /^active$/i } },
+        { timeOut: null, status: { $not: /^completed$/i } },
+      ],
+    })
+      .sort({ timeIn: 1, createdAt: 1 })
+      .lean();
+
+    return res.json({
+      success: true,
+      count: visitors.length,
+      visitors,
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: "Failed to fetch active passes.", error: error.message });
+  }
+});
+
 async function handleDeletePass(passIdRaw, adminPasswordRaw, res) {
   try {
     const passId = String(passIdRaw || "").trim().toUpperCase();

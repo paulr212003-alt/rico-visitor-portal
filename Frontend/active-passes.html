@@ -3,10 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Today's Visitors | RICO Visitor Portal</title>
+    <title>Active Passes | RICO Visitor Portal</title>
     <link rel="stylesheet" href="style.css" />
   </head>
-  <body data-page="today-visitors">
+  <body data-page="active-passes">
     <div class="particles-layer" id="particlesLayer" aria-hidden="true"></div>
 
     <header class="topbar glass-panel reveal">
@@ -39,8 +39,8 @@
       <a href="check-visitor.html">Check Visitor</a>
       <a href="validate-pass.html">Validate Pass</a>
       <a href="issue-pass.html">Issue Gate Pass</a>
-      <a class="active" href="today-visitors.html">Today's Visitors</a>
-      <a href="active-passes.html">Active Passes</a>
+      <a href="today-visitors.html">Today's Visitors</a>
+      <a class="active" href="active-passes.html">Active Passes</a>
       <a href="analytics.html">Analytics</a>
       <a href="vip-entry.html">VIP Entry</a>
     </nav>
@@ -48,10 +48,26 @@
     <main class="page-shell">
       <section class="page-card glass-panel reveal">
         <div class="section-head">
-          <h2>Today's Visitors</h2>
+          <h2>Active Pass Recovery Window</h2>
+          <span class="chip">Admin Password Required</span>
+        </div>
+        <form id="activePassesUnlockForm" class="form-grid">
+          <label class="span-2">
+            Security Password
+            <input type="password" id="activePassesPassword" placeholder="Enter admin password" required />
+          </label>
+          <button class="btn-primary" type="submit">Unlock Active Passes</button>
+          <button class="btn-secondary" id="lockActivePassesBtn" type="button">Lock</button>
+        </form>
+        <p id="activePassesResult" class="result-text">Enter security password to unlock active passes.</p>
+      </section>
+
+      <section class="page-card glass-panel reveal hidden" id="activePassesPanel">
+        <div class="section-head">
+          <h2>All Active Passes (All Time)</h2>
           <div class="inline-actions">
-            <span class="chip" id="todayCount">0 entries</span>
-            <button id="refreshTodayBtn" class="btn-secondary" type="button">Refresh</button>
+            <span class="chip" id="activePassesCount">Locked</span>
+            <button id="refreshActivePassesBtn" class="btn-secondary" type="button">Refresh</button>
           </div>
         </div>
         <div class="table-wrap">
@@ -62,14 +78,15 @@
                 <th>Name</th>
                 <th>Phone</th>
                 <th>Department</th>
+                <th>Purpose</th>
                 <th>Time In</th>
                 <th>Status</th>
                 <th>Action</th>
               </tr>
             </thead>
-            <tbody id="todayVisitorsBody">
+            <tbody id="activePassesBody">
               <tr>
-                <td colspan="7" class="empty-row">No entries yet.</td>
+                <td colspan="8" class="empty-row">No active passes found.</td>
               </tr>
             </tbody>
           </table>
@@ -77,21 +94,8 @@
       </section>
     </main>
 
-    <div id="authModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="authTitle">
-      <div class="modal-card glass-panel">
-        <h3 id="authTitle">Enter security password</h3>
-        <p id="authMessage" class="modal-message">Confirm secure action</p>
-        <input type="password" id="securityPassword" placeholder="Enter password" />
-        <div class="modal-actions">
-          <button id="approveButton" class="btn-primary">Confirm</button>
-          <button id="cancelButton" class="btn-secondary">Cancel</button>
-        </div>
-      </div>
-    </div>
-
     <div id="toastContainer" class="toast-container"></div>
 
     <script src="script.js"></script>
   </body>
 </html>
-
