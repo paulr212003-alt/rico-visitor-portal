@@ -23,12 +23,15 @@ let authAction = null;
 let pendingPassPayload = null;
 let pendingDeletePassId = null;
 let activePassesAdminPassword = "";
+let passHistoryAdminPassword = "";
+let passPreviewTimer = null;
 
 let analyticsRange = 7;
 let trendChart = null;
 let peakHoursChart = null;
 let departmentChart = null;
 let lastAnalyticsData = null;
+let historyFilterState = { mode: "all", rangeDays: null, fromDate: "", toDate: "" };
 let nameSuggestTimer = null;
 let voiceEnabled = true;
 let preferredSpeechVoice = null;
@@ -56,6 +59,19 @@ function formatDateTime(value) {
     hour: "2-digit",
     minute: "2-digit",
   })}`;
+}
+
+function formatDate(value) {
+  if (!value) return "-";
+  return new Date(value).toLocaleDateString();
+}
+
+function toDateInputValue(date) {
+  const d = new Date(date);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function setTheme(theme) {
@@ -416,6 +432,37 @@ function queryParam(name) {
   return new URLSearchParams(window.location.search).get(name) || "";
 }
 
+function parsePassQrPayload(rawText) {
+  const value = String(rawText || "").trim();
+  if (!value) return null;
+
+  if (/^RICO-PASS\|/i.test(value)) {
+    const [, passIdRaw, phoneRaw] = value.split("|");
+    const passId = String(passIdRaw || "").trim().toUpperCase();
+    const phone = normalizePhone(phoneRaw || "");
+    if (passId) return { passId, phone };
+  }
+
+  const jsonPrefix = value.startsWith("{") && value.endsWith("}");
+  if (jsonPrefix) {
+    try {
+      const parsed = JSON.parse(value);
+      const passId = String(parsed?.passId || "").trim().toUpperCase();
+      const phone = normalizePhone(parsed?.phone || "");
+      if (passId) return { passId, phone };
+    } catch (_error) {
+      return null;
+    }
+  }
+
+  const plainPassId = value.toUpperCase();
+  if (/^(PASS|VIP)-\d{8}-\d{4}$/.test(plainPassId)) {
+    return { passId: plainPassId, phone: "" };
+  }
+
+  return null;
+}
+
 function setNameSuggestions(options = []) {
   const checkNameSuggestions = document.getElementById("checkNameSuggestions");
   if (!checkNameSuggestions) return;
@@ -728,6 +775,50 @@ function getIssuePayload() {
   };
 }
 
+function showPassPreview(data) {
+  const previewWrap = document.getElementById("passPreviewWrap");
+  const previewCard = document.getElementById("passPreviewCard");
+  if (!previewWrap || !previewCard) return;
+
+  const visitor = data?.visitor || {};
+
+  const setText = (id, value) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value || "-";
+  };
+
+  setText("previewPassId", visitor.passId || data?.passId || "-");
+  setText("previewName", visitor.name || "-");
+  setText("previewPhone", visitor.phone || "-");
+  setText("previewDepartment", visitor.department || "-");
+  setText("previewPurpose", visitor.visitType || "-");
+  setText("previewPersonToMeet", visitor.personToMeet || "-");
+
+  const previewQrImage = document.getElementById("previewQrImage");
+  const qrCodeDataUrl = String(data?.qrCodeDataUrl || "").trim();
+  if (previewQrImage) {
+    if (qrCodeDataUrl) {
+      previewQrImage.src = qrCodeDataUrl;
+      previewQrImage.classList.remove("hidden");
+    } else {
+      previewQrImage.src = "";
+      previewQrImage.classList.add("hidden");
+    }
+  }
+
+  previewWrap.classList.remove("hidden");
+
+  // Restart animation on each new pass issue.
+  previewCard.style.animation = "none";
+  void previewCard.offsetWidth;
+  previewCard.style.animation = "";
+
+  clearTimeout(passPreviewTimer);
+  passPreviewTimer = setTimeout(() => {
+    previewWrap.classList.add("hidden");
+  }, 3000);
+}
+
 function handleIssueSuccess(data) {
   const passIssuedBanner = document.getElementById("passIssuedBanner");
   const issuedPassId = document.getElementById("issuedPassId");
@@ -737,6 +828,7 @@ function handleIssueSuccess(data) {
   if (passIssuedBanner) passIssuedBanner.classList.remove("hidden");
   showToast("Gate pass issued");
   announceGatePassIssued();
+  showPassPreview(data);
 
   if (createPassForm) {
     createPassForm.reset();
@@ -785,8 +877,22 @@ function initValidatePassPage() {
   const validationBadge = document.getElementById("validationBadge");
   const validationDetails = document.getElementById("validationDetails");
   const validateMarkExitBtn = document.getElementById("validateMarkExitBtn");
+  const validatePassIdInput = document.getElementById("validatePassId");
+  const validatePhoneInput = document.getElementById("validatePhone");
+  const startQrScanBtn = document.getElementById("startQrScanBtn");
+  const stopQrScanBtn = document.getElementById("stopQrScanBtn");
+  const qrScannerPanel = document.getElementById("qrScannerPanel");
+  const qrScanStatus = document.getElementById("qrScanStatus");
 
   if (!validatePassForm) return;
+
+  let qrScanner = null;
+  let qrScannerRunning = false;
+
+  const setQrStatus = (message, type = "") => {
+    if (!qrScanStatus) return;
+    setResult(qrScanStatus, message, type);
+  };
 
   const setValidationVisitorDetails = (visitor) => {
     renderDetails(validationDetails, {
@@ -804,12 +910,94 @@ function initValidatePassPage() {
   const initialPassId = queryParam("passId");
   const initialPhone = queryParam("phone");
   if (initialPassId) {
-    const input = document.getElementById("validatePassId");
-    if (input) input.value = initialPassId;
+    if (validatePassIdInput) validatePassIdInput.value = initialPassId;
   }
   if (initialPhone) {
-    const input = document.getElementById("validatePhone");
-    if (input) input.value = initialPhone;
+    if (validatePhoneInput) validatePhoneInput.value = initialPhone;
+  }
+
+  async function stopQrScanner() {
+    if (!qrScannerRunning || !qrScanner) {
+      if (stopQrScanBtn) stopQrScanBtn.classList.add("hidden");
+      return;
+    }
+
+    try {
+      await qrScanner.stop();
+      await qrScanner.clear();
+    } catch (_error) {
+      // Keep validation flow uninterrupted on camera-stop errors.
+    } finally {
+      qrScannerRunning = false;
+      if (startQrScanBtn) startQrScanBtn.disabled = false;
+      if (stopQrScanBtn) stopQrScanBtn.classList.add("hidden");
+      if (qrScannerPanel) qrScannerPanel.classList.add("hidden");
+    }
+  }
+
+  async function startQrScanner() {
+    if (!startQrScanBtn || !qrScannerPanel) return;
+    if (qrScannerRunning) return;
+
+    if (typeof window.Html5Qrcode === "undefined") {
+      setQrStatus("QR scanner is unavailable in this browser.", "error");
+      showToast("QR scanner not supported", true);
+      return;
+    }
+
+    qrScannerPanel.classList.remove("hidden");
+    setQrStatus("Align QR code inside camera frame.");
+    startQrScanBtn.disabled = true;
+    if (stopQrScanBtn) stopQrScanBtn.classList.remove("hidden");
+
+    try {
+      qrScanner = qrScanner || new window.Html5Qrcode("qrScannerRegion");
+      await qrScanner.start(
+        { facingMode: "environment" },
+        {
+          fps: 10,
+          qrbox: { width: 220, height: 220 },
+        },
+        async (decodedText) => {
+          const parsed = parsePassQrPayload(decodedText);
+          if (!parsed?.passId) {
+            setQrStatus("QR scanned but pass data format is invalid.", "error");
+            return;
+          }
+
+          if (validatePassIdInput) validatePassIdInput.value = parsed.passId;
+          if (validatePhoneInput) validatePhoneInput.value = parsed.phone || "";
+
+          setQrStatus(`QR detected: ${parsed.passId}`, "success");
+          showToast("QR scanned successfully");
+          await stopQrScanner();
+          validatePassForm.requestSubmit();
+        },
+        () => {}
+      );
+
+      qrScannerRunning = true;
+    } catch (error) {
+      qrScannerRunning = false;
+      if (startQrScanBtn) startQrScanBtn.disabled = false;
+      if (stopQrScanBtn) stopQrScanBtn.classList.add("hidden");
+      if (qrScannerPanel) qrScannerPanel.classList.add("hidden");
+      setQrStatus("Unable to start camera scanner.", "error");
+      showToast(error.message || "Unable to start camera scanner", true);
+    }
+  }
+
+  if (startQrScanBtn) {
+    startQrScanBtn.addEventListener("click", () => {
+      startQrScanner();
+    });
+  }
+
+  if (stopQrScanBtn) {
+    stopQrScanBtn.addEventListener("click", () => {
+      stopQrScanner();
+      setQrStatus("Scanner stopped.");
+    });
   }
 
   if (validateMarkExitBtn) {
@@ -841,10 +1029,12 @@ function initValidatePassPage() {
   validatePassForm.addEventListener("submit", async (event) => {
     event.preventDefault();
 
-    const passId = String(document.getElementById("validatePassId")?.value || "")
-      .trim()
-      .toUpperCase();
-    const phone = normalizePhone(document.getElementById("validatePhone")?.value || "");
+    const passId = String(validatePassIdInput?.value || "").trim().toUpperCase();
+    const phone = normalizePhone(validatePhoneInput?.value || "");
+
+    if (qrScannerRunning) {
+      await stopQrScanner();
+    }
 
     try {
       const data = await apiRequest("/validatePass", {
@@ -891,6 +1081,10 @@ function initValidatePassPage() {
         validateMarkExitBtn.dataset.phone = "";
       }
     }
+  });
+
+  window.addEventListener("beforeunload", () => {
+    stopQrScanner();
   });
 }
 
@@ -1153,6 +1347,269 @@ function initActivePassesPage() {
         lockPanel();
       } else {
         setResult(activePassesResult, error.message, "error");
+        showToast(error.message, true);
+      }
+    }
+  });
+}
+
+function setHistoryRangeButtons(selectedRange = "all") {
+  const historyRangeToggle = document.getElementById("historyRangeToggle");
+  if (!historyRangeToggle) return;
+
+  historyRangeToggle.querySelectorAll(".history-range-btn").forEach((button) => {
+    const value = String(button.dataset.range || "").trim().toLowerCase();
+    button.classList.toggle("active", value === String(selectedRange || "").trim().toLowerCase());
+  });
+}
+
+function renderPassHistoryRows(visitors) {
+  const historyTableBody = document.getElementById("historyTableBody");
+  if (!historyTableBody) return;
+
+  historyTableBody.innerHTML = "";
+
+  const list = Array.isArray(visitors) ? visitors : [];
+  if (!list.length) {
+    historyTableBody.innerHTML =
+      '<tr><td colspan="10" class="empty-row">No pass entries found for this filter.</td></tr>';
+    return;
+  }
+
+  list.forEach((visitor) => {
+    const passId = visitor.passId || "";
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td>${formatDate(visitor.date || visitor.timeIn || visitor.createdAt)}</td>
+      <td>${passId || "-"}</td>
+      <td>${visitor.name || "-"}</td>
+      <td>${visitor.phone || "-"}</td>
+      <td>${visitor.department || "-"}</td>
+      <td>${visitor.visitType || "-"}</td>
+      <td>${visitor.status || "-"}</td>
+      <td>${formatDateTime(visitor.timeIn)}</td>
+      <td>${formatDateTime(visitor.timeOut)}</td>
+      <td>
+        <button type="button" class="table-delete-btn history-delete-btn" data-pass-id="${passId}">
+          Delete
+        </button>
+      </td>
+    `;
+    historyTableBody.appendChild(row);
+  });
+}
+
+async function loadPassHistory(filter = historyFilterState) {
+  if (!passHistoryAdminPassword) {
+    throw new Error("Unlock history first.");
+  }
+
+  const params = new URLSearchParams();
+
+  if (filter?.mode === "custom" && filter.fromDate && filter.toDate) {
+    params.set("fromDate", filter.fromDate);
+    params.set("toDate", filter.toDate);
+  } else if (filter?.mode === "range") {
+    const rangeDays = Number(filter?.rangeDays || 7);
+    params.set("rangeDays", String(rangeDays));
+  }
+
+  const query = params.toString();
+  const endpoint = query ? `/passHistory?${query}` : "/passHistory";
+
+  const data = await apiRequest(endpoint, {
+    method: "GET",
+    headers: {
+      "x-admin-password": passHistoryAdminPassword,
+    },
+  });
+
+  const historyCountChip = document.getElementById("historyCountChip");
+  if (historyCountChip) historyCountChip.textContent = `${data.count || 0} entries`;
+  renderPassHistoryRows(data.visitors || []);
+  return data;
+}
+
+function initPassHistoryPage() {
+  const historyUnlockForm = document.getElementById("historyUnlockForm");
+  const historyAdminPasswordInput = document.getElementById("historyAdminPassword");
+  const historyLockBtn = document.getElementById("historyLockBtn");
+  const historyPanel = document.getElementById("historyPanel");
+  const historyAccessResult = document.getElementById("historyAccessResult");
+  const historyFilterResult = document.getElementById("historyFilterResult");
+  const historyCountChip = document.getElementById("historyCountChip");
+  const historyRefreshBtn = document.getElementById("historyRefreshBtn");
+  const historyRangeToggle = document.getElementById("historyRangeToggle");
+  const historyDateRangeForm = document.getElementById("historyDateRangeForm");
+  const historyFromDate = document.getElementById("historyFromDate");
+  const historyToDate = document.getElementById("historyToDate");
+  const historyResetRangeBtn = document.getElementById("historyResetRangeBtn");
+  const historyTableBody = document.getElementById("historyTableBody");
+
+  if (!historyUnlockForm || !historyPanel || !historyTableBody || !historyAdminPasswordInput) return;
+
+  const today = new Date();
+  const sevenDaysStart = new Date(today);
+  sevenDaysStart.setDate(today.getDate() - 6);
+
+  if (historyFromDate) historyFromDate.value = toDateInputValue(sevenDaysStart);
+  if (historyToDate) historyToDate.value = toDateInputValue(today);
+
+  const lockHistory = () => {
+    passHistoryAdminPassword = "";
+    historyPanel.classList.add("hidden");
+    renderPassHistoryRows([]);
+    historyFilterState = { mode: "all", rangeDays: null, fromDate: "", toDate: "" };
+    setHistoryRangeButtons("all");
+    if (historyCountChip) historyCountChip.textContent = "Locked";
+    setResult(historyAccessResult, "Unlock to load pass history.");
+    setResult(historyFilterResult, "Showing latest filtered records.");
+  };
+
+  const runHistoryLoad = async (message = "History loaded.") => {
+    try {
+      await loadPassHistory(historyFilterState);
+      setResult(historyFilterResult, message, "success");
+      return true;
+    } catch (error) {
+      if (error.status === 401) {
+        setResult(historyFilterResult, "Unauthorized", "error");
+        showToast("Unauthorized", true);
+        lockHistory();
+      } else {
+        setResult(historyFilterResult, error.message, "error");
+        showToast(error.message, true);
+      }
+      return false;
+    }
+  };
+
+  historyUnlockForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const adminPassword = String(historyAdminPasswordInput.value || "").trim();
+    if (!adminPassword) {
+      setResult(historyAccessResult, "Enter security password.", "error");
+      return;
+    }
+
+    passHistoryAdminPassword = adminPassword;
+
+    historyFilterState = { mode: "all", rangeDays: null, fromDate: "", toDate: "" };
+    setHistoryRangeButtons("all");
+
+    const ok = await runHistoryLoad("Showing all history entries.");
+    if (!ok) return;
+
+    historyPanel.classList.remove("hidden");
+    setResult(historyAccessResult, "Access granted. History unlocked.", "success");
+    showToast("Pass history loaded");
+  });
+
+  if (historyLockBtn) {
+    historyLockBtn.addEventListener("click", () => {
+      lockHistory();
+      historyAdminPasswordInput.value = "";
+      showToast("History locked");
+    });
+  }
+
+  if (historyRefreshBtn) {
+    historyRefreshBtn.addEventListener("click", async () => {
+      if (!passHistoryAdminPassword) {
+        setResult(historyFilterResult, "Unlock history first.", "error");
+        return;
+      }
+      await runHistoryLoad("History refreshed.");
+    });
+  }
+
+  if (historyRangeToggle) {
+    historyRangeToggle.addEventListener("click", async (event) => {
+      const rangeButton = event.target.closest(".history-range-btn");
+      if (!rangeButton) return;
+      if (!passHistoryAdminPassword) {
+        setResult(historyFilterResult, "Unlock history first.", "error");
+        return;
+      }
+
+      const rangeValue = String(rangeButton.dataset.range || "").trim().toLowerCase();
+
+      if (rangeValue === "all") {
+        historyFilterState = { mode: "all", rangeDays: null, fromDate: "", toDate: "" };
+        setHistoryRangeButtons("all");
+        await runHistoryLoad("Showing all history entries.");
+        return;
+      }
+
+      const rangeDays = Number(rangeValue || 7);
+      historyFilterState = { mode: "range", rangeDays, fromDate: "", toDate: "" };
+      setHistoryRangeButtons(rangeValue);
+      await runHistoryLoad(`Showing last ${rangeDays} days history.`);
+    });
+  }
+
+  if (historyDateRangeForm) {
+    historyDateRangeForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (!passHistoryAdminPassword) {
+        setResult(historyFilterResult, "Unlock history first.", "error");
+        return;
+      }
+
+      const fromDate = String(historyFromDate?.value || "").trim();
+      const toDate = String(historyToDate?.value || "").trim();
+
+      if (!fromDate || !toDate) {
+        setResult(historyFilterResult, "Select both FROM and TO dates.", "error");
+        return;
+      }
+
+      historyFilterState = { mode: "custom", rangeDays: null, fromDate, toDate };
+      setHistoryRangeButtons("");
+      await runHistoryLoad(`Showing history from ${fromDate} to ${toDate}.`);
+    });
+  }
+
+  if (historyResetRangeBtn) {
+    historyResetRangeBtn.addEventListener("click", async () => {
+      if (!passHistoryAdminPassword) {
+        setResult(historyFilterResult, "Unlock history first.", "error");
+        return;
+      }
+
+      historyFilterState = { mode: "all", rangeDays: null, fromDate: "", toDate: "" };
+      setHistoryRangeButtons("all");
+      await runHistoryLoad("Showing all history entries.");
+    });
+  }
+
+  historyTableBody.addEventListener("click", async (event) => {
+    const deleteButton = event.target.closest(".history-delete-btn");
+    if (!deleteButton) return;
+
+    if (!passHistoryAdminPassword) {
+      setResult(historyFilterResult, "Unlock history first.", "error");
+      return;
+    }
+
+    const passId = String(deleteButton.dataset.passId || "").trim();
+    if (!passId) {
+      showToast("Pass ID not found", true);
+      return;
+    }
+
+    try {
+      await deletePassWithFallback(passId, passHistoryAdminPassword);
+      showToast(`Pass ${passId} deleted`);
+      await runHistoryLoad(`Deleted ${passId} and refreshed history.`);
+    } catch (error) {
+      if (error.status === 401) {
+        setResult(historyFilterResult, "Unauthorized", "error");
+        showToast("Unauthorized", true);
+        lockHistory();
+      } else {
+        setResult(historyFilterResult, error.message, "error");
         showToast(error.message, true);
       }
     }
@@ -1679,6 +2136,9 @@ function initPage() {
       break;
     case "active-passes":
       initActivePassesPage();
+      break;
+    case "pass-history":
+      initPassHistoryPage();
       break;
     case "analytics":
       initAnalyticsPage();

@@ -1,4 +1,5 @@
 const express = require("express");
+const QRCode = require("qrcode");
 const Visitor = require("./visitorModel");
 const VipPass = require("./vipPassModel");
 
@@ -101,6 +102,34 @@ function parseCarriesLaptop(value) {
 
 function getAdminPassword(req) {
   return String(req.body?.adminPassword || req.headers["x-admin-password"] || req.query?.adminPassword || "").trim();
+}
+
+function buildPassQrPayload(passId, phone = "") {
+  return `RICO-PASS|${String(passId || "").trim().toUpperCase()}|${normalizePhone(phone)}`;
+}
+
+async function createQrDataUrl(payload) {
+  return QRCode.toDataURL(payload, {
+    errorCorrectionLevel: "M",
+    margin: 1,
+    width: 260,
+  });
+}
+
+function parseDateStart(dateText) {
+  const value = String(dateText || "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const date = new Date(`${value}T00:00:00.000Z`);
+  if (Number.isNaN(date.getTime())) return null;
+  return date;
+}
+
+function parseDateEnd(dateText) {
+  const value = String(dateText || "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const date = new Date(`${value}T23:59:59.999Z`);
+  if (Number.isNaN(date.getTime())) return null;
+  return date;
 }
 
 async function generateVisitorPassId(prefix = "PASS") {
@@ -352,9 +381,11 @@ router.post("/createPass", async (req, res) => {
 
     const now = new Date();
     const passId = await generateVisitorPassId("PASS");
+    const qrPayload = buildPassQrPayload(passId, payload.phone);
 
     const visitor = await Visitor.create({
       ...payload,
+      qrPayload,
       passId,
       status: "active",
       date: now,
@@ -362,10 +393,18 @@ router.post("/createPass", async (req, res) => {
       timeOut: null,
     });
 
+    let qrCodeDataUrl = "";
+    try {
+      qrCodeDataUrl = await createQrDataUrl(qrPayload);
+    } catch (error) {
+      console.error("Failed to generate QR code for pass:", error.message);
+    }
+
     return res.status(201).json({
       success: true,
       message: "Gate pass issued",
       passId: visitor.passId,
+      qrCodeDataUrl,
       visitor,
     });
   } catch (error) {
@@ -526,6 +565,71 @@ router.get("/todayVisitors", async (_req, res) => {
   }
 });
 
+router.get("/passHistory", async (req, res) => {
+  try {
+    const adminPassword = getAdminPassword(req);
+    if (adminPassword !== ADMIN_PASSWORD) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+    const rangeRaw = Number.parseInt(String(req.query?.rangeDays || ""), 10);
+    const rangeDays = Number.isFinite(rangeRaw) ? Math.min(Math.max(rangeRaw, 1), 3650) : null;
+
+    const fromDateRaw = String(req.query?.fromDate || "").trim();
+    const toDateRaw = String(req.query?.toDate || "").trim();
+
+    let start = null;
+    let end = null;
+
+    if (fromDateRaw || toDateRaw) {
+      if (!fromDateRaw || !toDateRaw) {
+        return res.status(400).json({ success: false, message: "Both FROM and TO dates are required." });
+      }
+
+      start = parseDateStart(fromDateRaw);
+      end = parseDateEnd(toDateRaw);
+
+      if (!start || !end) {
+        return res.status(400).json({ success: false, message: "Enter valid FROM and TO dates." });
+      }
+
+      if (start > end) {
+        return res.status(400).json({ success: false, message: "FROM date cannot be after TO date." });
+      }
+    } else if (rangeDays) {
+      end = new Date();
+      end.setHours(23, 59, 59, 999);
+      start = new Date(end);
+      start.setHours(0, 0, 0, 0);
+      start.setDate(start.getDate() - (rangeDays - 1));
+    }
+
+    const query = {};
+    if (start || end) {
+      const timeFilter = {};
+      if (start) timeFilter.$gte = start;
+      if (end) timeFilter.$lte = end;
+
+      query.$or = [{ date: timeFilter }, { timeIn: timeFilter }, { createdAt: timeFilter }];
+    }
+
+    const visitors = await Visitor.find(query).sort({ timeIn: -1, createdAt: -1 }).lean();
+
+    return res.json({
+      success: true,
+      count: visitors.length,
+      visitors,
+      filters: {
+        rangeDays,
+        fromDate: fromDateRaw || null,
+        toDate: toDateRaw || null,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: "Failed to fetch pass history.", error: error.message });
+  }
+});
+
 router.get("/analytics", async (req, res) => {
   try {
     const requestedRange = Number.parseInt(String(req.query?.rangeDays || "7"), 10);
@@ -664,6 +768,7 @@ router.post("/vip/issue", async (req, res) => {
     const now = new Date();
     const passId = await generateVisitorPassId("VIP");
     const phone = await generateVipPhone();
+    const qrPayload = buildPassQrPayload(passId, phone);
 
     const visitor = await Visitor.create({
       name: vipPass.label ? `VIP Visitor - ${vipPass.label}` : "VIP Visitor",
@@ -682,12 +787,20 @@ router.post("/vip/issue", async (req, res) => {
       remarks: "VIP auto entry",
       isVip: true,
       vipAccessId,
+      qrPayload,
       passId,
       status: "active",
       date: now,
       timeIn: now,
       timeOut: null,
     });
+
+    let qrCodeDataUrl = "";
+    try {
+      qrCodeDataUrl = await createQrDataUrl(qrPayload);
+    } catch (error) {
+      console.error("Failed to generate QR code for VIP pass:", error.message);
+    }
 
     vipPass.issueCount = (vipPass.issueCount || 0) + 1;
     vipPass.lastIssuedPassId = passId;
@@ -699,6 +812,7 @@ router.post("/vip/issue", async (req, res) => {
       message: "Gate pass issued",
       passId,
       vipAccessId,
+      qrCodeDataUrl,
       visitor,
     });
   } catch (error) {

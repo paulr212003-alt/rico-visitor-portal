@@ -1,3 +1,4 @@
+
 const mongoose = require("mongoose");
 
 const vipPassSchema = new mongoose.Schema(

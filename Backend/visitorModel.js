@@ -55,6 +55,7 @@ const visitorSchema = new mongoose.Schema(
     laptopSerialNumber: { type: String, default: "", trim: true },
     isVip: { type: Boolean, default: false, index: true },
     vipAccessId: { type: String, default: "", trim: true, index: true },
+    qrPayload: { type: String, default: "", trim: true, index: true },
     remarks: { type: String, default: "", trim: true },
     passId: { type: String, required: true, unique: true, index: true },
     status: {

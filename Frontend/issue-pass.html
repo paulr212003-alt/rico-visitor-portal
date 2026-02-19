@@ -41,6 +41,7 @@
       <a class="active" href="issue-pass.html">Issue Gate Pass</a>
       <a href="today-visitors.html">Today's Visitors</a>
       <a href="active-passes.html">Active Passes</a>
+      <a href="pass-history.html">Pass History</a>
       <a href="analytics.html">Analytics</a>
       <a href="vip-entry.html">VIP Entry</a>
     </nav>
@@ -174,6 +175,30 @@
         <div id="passIssuedBanner" class="pass-banner hidden">
           <span>Issued Pass ID</span>
           <strong id="issuedPassId"></strong>
+        </div>
+
+        <div id="passPreviewWrap" class="pass-preview-wrap hidden" aria-live="polite">
+          <article id="passPreviewCard" class="pass-preview-card">
+            <div class="pass-preview-head">
+              <div>
+                <p class="pass-preview-kicker">DIGITAL GATE PASS</p>
+                <h3 id="previewPassId">PASS-0000</h3>
+              </div>
+              <span class="chip">Issued</span>
+            </div>
+            <div class="pass-preview-body">
+              <div class="pass-preview-details">
+                <p><span>Name</span><strong id="previewName">-</strong></p>
+                <p><span>Phone</span><strong id="previewPhone">-</strong></p>
+                <p><span>Department</span><strong id="previewDepartment">-</strong></p>
+                <p><span>Purpose</span><strong id="previewPurpose">-</strong></p>
+                <p><span>Person To Meet</span><strong id="previewPersonToMeet">-</strong></p>
+              </div>
+              <div class="pass-preview-qr">
+                <img id="previewQrImage" alt="Gate pass QR code" />
+              </div>
+            </div>
+          </article>
         </div>
       </section>
     </main>

@@ -41,6 +41,7 @@ app.use(cors(corsOptions));
 app.use(express.json({ limit: "1mb" }));
 
 app.get("/health", (_req, res) => {
+  
   res.json({
     status: "ok",
     uptime: Math.floor(process.uptime()),

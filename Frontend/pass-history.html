@@ -3,10 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Active Passes | RICO Visitor Portal</title>
+    <title>Pass History | RICO Visitor Portal</title>
     <link rel="stylesheet" href="style.css" />
   </head>
-  <body data-page="active-passes">
+  <body data-page="pass-history">
     <div class="particles-layer" id="particlesLayer" aria-hidden="true"></div>
 
     <header class="topbar glass-panel reveal">
@@ -40,8 +40,8 @@
       <a href="validate-pass.html">Validate Pass</a>
       <a href="issue-pass.html">Issue Gate Pass</a>
       <a href="today-visitors.html">Today's Visitors</a>
-      <a class="active" href="active-passes.html">Active Passes</a>
-      <a href="pass-history.html">Pass History</a>
+      <a href="active-passes.html">Active Passes</a>
+      <a class="active" href="pass-history.html">Pass History</a>
       <a href="analytics.html">Analytics</a>
       <a href="vip-entry.html">VIP Entry</a>
     </nav>
@@ -49,45 +49,87 @@
     <main class="page-shell">
       <section class="page-card glass-panel reveal">
         <div class="section-head">
-          <h2>Active Pass Recovery Window</h2>
+          <h2>History Access</h2>
           <span class="chip">Admin Password Required</span>
         </div>
-        <form id="activePassesUnlockForm" class="form-grid">
+        <form id="historyUnlockForm" class="form-grid">
           <label class="span-2">
             Security Password
-            <input type="password" id="activePassesPassword" placeholder="Enter admin password" required />
+            <input type="password" id="historyAdminPassword" placeholder="Enter admin password" required />
           </label>
-          <button class="btn-primary" type="submit">Unlock Active Passes</button>
-          <button class="btn-secondary" id="lockActivePassesBtn" type="button">Lock</button>
+          <button class="btn-primary" type="submit">Unlock History</button>
+          <button class="btn-secondary" id="historyLockBtn" type="button">Lock</button>
         </form>
-        <p id="activePassesResult" class="result-text">Enter security password to unlock active passes.</p>
+        <p id="historyAccessResult" class="result-text">Unlock to load pass history.</p>
       </section>
 
-      <section class="page-card glass-panel reveal hidden" id="activePassesPanel">
+      <section class="page-card glass-panel reveal hidden" id="historyPanel">
         <div class="section-head">
-          <h2>All Active Passes (All Time)</h2>
+          <h2>Pass History Filters</h2>
           <div class="inline-actions">
-            <span class="chip" id="activePassesCount">Locked</span>
-            <button id="refreshActivePassesBtn" class="btn-secondary" type="button">Refresh</button>
+            <span class="chip" id="historyCountChip">Locked</span>
+            <button class="btn-secondary" id="historyRefreshBtn" type="button">Refresh</button>
           </div>
         </div>
+
+        <div class="history-filter-grid">
+          <div>
+            <p class="filter-label">Quick Ranges</p>
+            <div class="range-toggle" id="historyRangeToggle">
+              <button type="button" class="range-btn history-range-btn active" data-range="all">
+                <span class="range-icon">ALL</span>
+                All Entries
+              </button>
+              <button type="button" class="range-btn history-range-btn" data-range="7">
+                <span class="range-icon">7D</span>
+                Last 7 Days
+              </button>
+              <button type="button" class="range-btn history-range-btn" data-range="14">
+                <span class="range-icon">14D</span>
+                Last 14 Days
+              </button>
+              <button type="button" class="range-btn history-range-btn" data-range="30">
+                <span class="range-icon">30D</span>
+                Last 30 Days
+              </button>
+            </div>
+          </div>
+
+          <form id="historyDateRangeForm" class="history-date-form">
+            <label>
+              FROM
+              <input type="date" id="historyFromDate" required />
+            </label>
+            <label>
+              TO
+              <input type="date" id="historyToDate" required />
+            </label>
+            <button class="btn-primary" type="submit">Generate Range</button>
+            <button class="btn-secondary" id="historyResetRangeBtn" type="button">Reset to All</button>
+          </form>
+        </div>
+
+        <p id="historyFilterResult" class="result-text">Showing latest filtered records.</p>
+
         <div class="table-wrap">
           <table>
             <thead>
               <tr>
+                <th>Date</th>
                 <th>Pass ID</th>
                 <th>Name</th>
                 <th>Phone</th>
                 <th>Department</th>
                 <th>Purpose</th>
-                <th>Time In</th>
                 <th>Status</th>
+                <th>Time In</th>
+                <th>Time Out</th>
                 <th>Action</th>
               </tr>
             </thead>
-            <tbody id="activePassesBody">
+            <tbody id="historyTableBody">
               <tr>
-                <td colspan="8" class="empty-row">No active passes found.</td>
+                <td colspan="10" class="empty-row">Unlock to load history.</td>
               </tr>
             </tbody>
           </table>

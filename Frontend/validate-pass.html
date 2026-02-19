@@ -41,6 +41,7 @@
       <a href="issue-pass.html">Issue Gate Pass</a>
       <a href="today-visitors.html">Today's Visitors</a>
       <a href="active-passes.html">Active Passes</a>
+      <a href="pass-history.html">Pass History</a>
       <a href="analytics.html">Analytics</a>
       <a href="vip-entry.html">VIP Entry</a>
     </nav>
@@ -62,6 +63,14 @@
           </label>
           <button class="btn-primary span-2" type="submit">Validate Pass</button>
         </form>
+        <div class="inline-actions qr-scan-actions">
+          <button class="btn-secondary" id="startQrScanBtn" type="button">Scan QR</button>
+          <button class="btn-secondary hidden" id="stopQrScanBtn" type="button">Stop Scan</button>
+        </div>
+        <div id="qrScannerPanel" class="qr-scanner-panel hidden">
+          <div id="qrScannerRegion"></div>
+          <p id="qrScanStatus" class="result-text">Align QR code inside camera frame.</p>
+        </div>
         <p id="validateResult" class="result-text">Enter pass details to authenticate visitor.</p>
       </section>
 
@@ -81,6 +90,7 @@
 
     <div id="toastContainer" class="toast-container"></div>
 
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <script src="script.js"></script>
   </body>
 </html>
