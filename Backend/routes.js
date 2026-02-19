@@ -379,6 +379,24 @@ router.post("/createPass", async (req, res) => {
       payload.laptopSerialNumber = "";
     }
 
+    const exactNameFilter = {
+      name: { $regex: `^${escapeRegex(payload.name)}$`, $options: "i" },
+    };
+
+    const exactNamePhoneMatch = await Visitor.findOne({
+      ...exactNameFilter,
+      phone: payload.phone,
+    }).sort({ createdAt: -1 });
+
+    if (exactNamePhoneMatch) {
+      return res.status(409).json({
+        success: false,
+        code: "RENEW_REQUIRED",
+        message: "Same name and phone already exists. Kindly renew pass for this individual.",
+        visitor: exactNamePhoneMatch,
+      });
+    }
+
     const now = new Date();
     const passId = await generateVisitorPassId("PASS");
     const qrPayload = buildPassQrPayload(passId, payload.phone);
@@ -479,6 +497,84 @@ router.post("/markExit", async (req, res) => {
     });
   } catch (error) {
     return res.status(500).json({ success: false, message: "Failed to mark exit.", error: error.message });
+  }
+});
+
+router.post("/renewPass", async (req, res) => {
+  try {
+    const adminPassword = String(req.body?.adminPassword || "").trim();
+    if (adminPassword !== ADMIN_PASSWORD) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+    const name = normalizeName(req.body?.name);
+    const phone = normalizePhone(req.body?.phone);
+
+    if (!name && !phone) {
+      return res.status(400).json({ success: false, message: "Enter name or phone to renew pass." });
+    }
+
+    const query = {};
+    if (name && phone) {
+      query.name = { $regex: `^${escapeRegex(name)}$`, $options: "i" };
+      query.phone = phone;
+    } else if (phone) {
+      query.phone = phone;
+    } else {
+      query.name = { $regex: `^${escapeRegex(name)}$`, $options: "i" };
+    }
+
+    const existingVisitor = await Visitor.findOne(query).sort({ createdAt: -1 });
+    if (!existingVisitor) {
+      return res.status(404).json({ success: false, message: "No existing pass history found for this person." });
+    }
+
+    const now = new Date();
+    const passId = await generateVisitorPassId("PASS");
+    const qrPayload = buildPassQrPayload(passId, existingVisitor.phone);
+
+    const renewedVisitor = await Visitor.create({
+      name: normalizeName(existingVisitor.name),
+      phone: normalizePhone(existingVisitor.phone),
+      visitorType: normalizeVisitorType(existingVisitor.visitorType),
+      companyType: normalizeCompanyType(existingVisitor.companyType),
+      company: String(existingVisitor.company || "").trim(),
+      ricoUnit: normalizeRicoUnit(existingVisitor.ricoUnit),
+      visitType: String(existingVisitor.visitType || "").trim(),
+      personToMeet: String(existingVisitor.personToMeet || "").trim(),
+      department: normalizeDepartment(existingVisitor.department),
+      idProofType: String(existingVisitor.idProofType || "").trim(),
+      idProofNumber: String(existingVisitor.idProofNumber || "").trim(),
+      carriesLaptop: Boolean(existingVisitor.carriesLaptop),
+      laptopSerialNumber: existingVisitor.carriesLaptop ? String(existingVisitor.laptopSerialNumber || "").trim() : "",
+      remarks: String(existingVisitor.remarks || "").trim(),
+      isVip: false,
+      vipAccessId: "",
+      qrPayload,
+      passId,
+      status: "active",
+      date: now,
+      timeIn: now,
+      timeOut: null,
+    });
+
+    let qrCodeDataUrl = "";
+    try {
+      qrCodeDataUrl = await createQrDataUrl(qrPayload);
+    } catch (error) {
+      console.error("Failed to generate QR code for renewed pass:", error.message);
+    }
+
+    return res.status(201).json({
+      success: true,
+      message: "Gate pass renewed",
+      passId: renewedVisitor.passId,
+      qrCodeDataUrl,
+      visitor: renewedVisitor,
+      sourceVisitorId: existingVisitor._id,
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: "Failed to renew gate pass.", error: error.message });
   }
 });
 

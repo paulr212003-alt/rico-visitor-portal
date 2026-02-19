@@ -3,10 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Validate Pass | RICO Visitor Portal</title>
+    <title>Renew Pass | RICO Visitor Portal</title>
     <link rel="stylesheet" href="style.css" />
   </head>
-  <body data-page="validate-pass">
+  <body data-page="renew-pass">
     <div class="particles-layer" id="particlesLayer" aria-hidden="true"></div>
 
     <header class="topbar glass-panel reveal">
@@ -37,9 +37,9 @@
     <nav class="module-nav reveal" aria-label="Primary">
       <a href="index.html">Home</a>
       <a href="check-visitor.html">Check Visitor</a>
-      <a class="active" href="validate-pass.html">Validate Pass</a>
+      <a href="validate-pass.html">Validate Pass</a>
       <a href="issue-pass.html">Issue Gate Pass</a>
-      <a href="renew-pass.html">Renew Pass</a>
+      <a class="active" href="renew-pass.html">Renew Pass</a>
       <a href="today-visitors.html">Today's Visitors</a>
       <a href="active-passes.html">Active Passes</a>
       <a href="pass-history.html">Pass History</a>
@@ -50,49 +50,52 @@
     <main class="page-shell">
       <section class="page-card glass-panel reveal">
         <div class="section-head">
-          <h2>Pass Validation</h2>
-          <span class="chip">Security Gate</span>
+          <h2>Renew Existing Visitor Pass</h2>
+          <span class="chip">Search by Name or Mobile</span>
         </div>
-        <form id="validatePassForm" class="form-grid">
+        <form id="renewSearchForm" class="form-grid">
           <label>
-            Pass ID
-            <input type="text" id="validatePassId" placeholder="PASS-YYYYMMDD-0001" required />
+            Full Name
+            <input type="text" id="renewName" list="renewNameSuggestions" placeholder="Enter full name" />
+            <datalist id="renewNameSuggestions"></datalist>
           </label>
           <label>
-            Phone (optional)
-            <input type="tel" id="validatePhone" placeholder="Enter phone number" />
+            Mobile Number
+            <input type="tel" id="renewPhone" placeholder="Enter mobile number" />
           </label>
-          <button class="btn-primary span-2" type="submit">Validate Pass</button>
+          <button class="btn-primary span-2" type="submit">Fetch Visitor Details</button>
         </form>
-        <div class="inline-actions qr-scan-actions">
-          <button class="btn-secondary" id="startQrScanBtn" type="button">Scan QR</button>
-          <button class="btn-secondary hidden" id="stopQrScanBtn" type="button">Stop Scan</button>
-        </div>
-        <div id="qrScannerPanel" class="qr-scanner-panel hidden">
-          <div id="qrScannerRegion"></div>
-          <p id="qrScanStatus" class="result-text">Align QR code inside camera frame.</p>
-        </div>
-        <p id="validateResult" class="result-text">Enter pass details to authenticate visitor.</p>
+        <p id="renewSearchResult" class="result-text">
+          Enter name or mobile. Renew button appears once existing visitor is found.
+        </p>
       </section>
 
       <section class="page-card glass-panel reveal">
         <div class="section-head">
-          <h2>Validation Output</h2>
-          <span class="chip" id="validationBadge">Pending</span>
+          <h2>Matched Visitor Details</h2>
+          <span class="chip" id="renewMatchChip">No match</span>
         </div>
-        <div id="validationDetails" class="details-grid">
-          <p class="empty-row">No validation result yet.</p>
+        <div id="renewDetails" class="details-grid">
+          <p class="empty-row">No visitor selected.</p>
         </div>
-        <div class="inline-actions">
-          <button class="btn-secondary hidden" id="validateMarkExitBtn" type="button">Mark Exit</button>
+        <div class="form-grid">
+          <label class="span-2">
+            Security Password
+            <input type="password" id="renewAdminPassword" placeholder="Enter admin password" />
+          </label>
+          <button class="btn-primary span-2" id="renewPassBtn" type="button" disabled>Renew Pass</button>
+        </div>
+
+        <div id="renewPassBanner" class="pass-banner hidden">
+          <span>Renewed Pass ID</span>
+          <strong id="renewedPassId"></strong>
+          <img id="renewedPassQr" class="renewed-pass-qr hidden" alt="Renewed pass QR code" />
         </div>
       </section>
     </main>
 
     <div id="toastContainer" class="toast-container"></div>
 
-    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <script src="script.js"></script>
   </body>
 </html>
-

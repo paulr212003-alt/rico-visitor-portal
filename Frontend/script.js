@@ -24,7 +24,6 @@ let pendingPassPayload = null;
 let pendingDeletePassId = null;
 let activePassesAdminPassword = "";
 let passHistoryAdminPassword = "";
-let passPreviewTimer = null;
 
 let analyticsRange = 7;
 let trendChart = null;
@@ -329,6 +328,17 @@ function attachModalHandlers() {
       } catch (error) {
         if (error.status === 401) {
           showToast("Unauthorized", true);
+        } else if (error.status === 409) {
+          closeAuthModal();
+          const issueDuplicateHint = document.getElementById("issueDuplicateHint");
+          if (issueDuplicateHint) {
+            setResult(
+              issueDuplicateHint,
+              "Same name and phone already exists. Kindly use Renew Pass for this individual.",
+              "error"
+            );
+          }
+          showToast(error.message || "Renew pass required", true);
         } else {
           showToast(error.message, true);
         }
@@ -432,6 +442,20 @@ function queryParam(name) {
   return new URLSearchParams(window.location.search).get(name) || "";
 }
 
+function setDatalistOptions(datalistId, options = []) {
+  const datalist = document.getElementById(datalistId);
+  if (!datalist) return;
+
+  datalist.innerHTML = "";
+  options.forEach((item) => {
+    const value = normalizeName(item);
+    if (!value) return;
+    const option = document.createElement("option");
+    option.value = value;
+    datalist.appendChild(option);
+  });
+}
+
 function parsePassQrPayload(rawText) {
   const value = String(rawText || "").trim();
   if (!value) return null;
@@ -464,20 +488,12 @@ function parsePassQrPayload(rawText) {
 }
 
 function setNameSuggestions(options = []) {
-  const checkNameSuggestions = document.getElementById("checkNameSuggestions");
-  if (!checkNameSuggestions) return;
-
-  checkNameSuggestions.innerHTML = "";
-  options.forEach((name) => {
-    const option = document.createElement("option");
-    option.value = name;
-    checkNameSuggestions.appendChild(option);
-  });
+  setDatalistOptions("checkNameSuggestions", options);
 }
 
-async function fetchNameSuggestions(query) {
+async function fetchNameSuggestionsForDatalist(query, datalistId) {
   if (!query || query.length < 2) {
-    setNameSuggestions([]);
+    setDatalistOptions(datalistId, []);
     return;
   }
 
@@ -485,10 +501,14 @@ async function fetchNameSuggestions(query) {
     const data = await apiRequest(`/nameSuggestions?q=${encodeURIComponent(query)}`, {
       method: "GET",
     });
-    setNameSuggestions(data.suggestions || []);
+    setDatalistOptions(datalistId, data.suggestions || []);
   } catch (_error) {
-    setNameSuggestions([]);
+    setDatalistOptions(datalistId, []);
   }
+}
+
+async function fetchNameSuggestions(query) {
+  return fetchNameSuggestionsForDatalist(query, "checkNameSuggestions");
 }
 
 function initCheckVisitorPage() {
@@ -589,20 +609,8 @@ function initCheckVisitorPage() {
           const params = new URLSearchParams({
             name: data.visitor.name || name,
             phone: data.visitor.phone || phone,
-            visitorType: data.visitor.visitorType || "Visitor",
-            companyType: data.visitor.companyType || "",
-            company: data.visitor.company || "",
-            ricoUnit: data.visitor.ricoUnit || "",
-            visitType: data.visitor.visitType || "",
-            personToMeet: data.visitor.personToMeet || "",
-            department: data.visitor.department || "",
-            carriesLaptop: data.visitor.carriesLaptop ? "Yes" : "No",
-            laptopSerialNumber: data.visitor.laptopSerialNumber || "",
-            idProofType: data.visitor.idProofType || "",
-            idProofNumber: data.visitor.idProofNumber || "",
-            remarks: data.visitor.remarks || "",
           });
-          renewPassLink.href = `issue-pass.html?${params.toString()}`;
+          renewPassLink.href = `renew-pass.html?${params.toString()}`;
         }
 
         if (validatePassLink) {
@@ -812,17 +820,13 @@ function showPassPreview(data) {
   previewCard.style.animation = "none";
   void previewCard.offsetWidth;
   previewCard.style.animation = "";
-
-  clearTimeout(passPreviewTimer);
-  passPreviewTimer = setTimeout(() => {
-    previewWrap.classList.add("hidden");
-  }, 3000);
 }
 
 function handleIssueSuccess(data) {
   const passIssuedBanner = document.getElementById("passIssuedBanner");
   const issuedPassId = document.getElementById("issuedPassId");
   const createPassForm = document.getElementById("createPassForm");
+  const issueDuplicateHint = document.getElementById("issueDuplicateHint");
 
   if (issuedPassId) issuedPassId.textContent = data.passId || "-";
   if (passIssuedBanner) passIssuedBanner.classList.remove("hidden");
@@ -835,18 +839,93 @@ function handleIssueSuccess(data) {
     syncCompanyFields();
     syncLaptopFields();
   }
+
+  if (issueDuplicateHint) {
+    setResult(
+      issueDuplicateHint,
+      "Enter name and phone to issue a new pass. Use Renew Pass for existing same person."
+    );
+  }
 }
 
 function initIssuePassPage() {
   const createPassForm = document.getElementById("createPassForm");
   const companyTypeSelect = document.getElementById("companyType");
   const carriesLaptopSelect = document.getElementById("carriesLaptop");
+  const nameInput = document.getElementById("name");
+  const phoneInput = document.getElementById("phone");
+  const issueDuplicateHint = document.getElementById("issueDuplicateHint");
+  let duplicateNameTimer = null;
 
   if (!createPassForm) return;
 
   populateIssueFormFromQuery();
   syncCompanyFields();
   syncLaptopFields();
+
+  const checkSameNameWarning = async () => {
+    if (!issueDuplicateHint || !nameInput) return;
+
+    const name = normalizeName(nameInput.value);
+    const phone = normalizePhone(phoneInput?.value || "");
+
+    if (name.length < 2) {
+      setResult(
+        issueDuplicateHint,
+        "Enter name and phone to issue a new pass. Use Renew Pass for existing same person."
+      );
+      return;
+    }
+
+    try {
+      const data = await apiRequest("/checkVisitor", {
+        method: "POST",
+        body: JSON.stringify({ name }),
+      });
+
+      if (!data.exists || !data.visitor) {
+        setResult(issueDuplicateHint, "No same-name visitor found. You can issue a new pass.");
+        return;
+      }
+
+      const matchedName = normalizeName(data.visitor?.name || "");
+      const matchedPhone = normalizePhone(data.visitor?.phone || "");
+      const sameName = matchedName.toLowerCase() === name.toLowerCase();
+      const sameNameAndPhone = sameName && phone && matchedPhone && matchedPhone === phone;
+
+      if (sameNameAndPhone) {
+        setResult(
+          issueDuplicateHint,
+          "Same name and phone already exists. Kindly renew pass for this individual.",
+          "error"
+        );
+        return;
+      }
+
+      if (sameName) {
+        setResult(
+          issueDuplicateHint,
+          "Same name person exists. If same individual, kindly use Renew Pass. Different phone is allowed."
+        );
+      }
+    } catch (_error) {
+      setResult(issueDuplicateHint, "Unable to check duplicate name right now.");
+    }
+  };
+
+  if (nameInput) {
+    nameInput.addEventListener("input", () => {
+      clearTimeout(duplicateNameTimer);
+      duplicateNameTimer = setTimeout(checkSameNameWarning, 260);
+    });
+  }
+
+  if (phoneInput) {
+    phoneInput.addEventListener("input", () => {
+      clearTimeout(duplicateNameTimer);
+      duplicateNameTimer = setTimeout(checkSameNameWarning, 260);
+    });
+  }
 
   if (companyTypeSelect) {
     companyTypeSelect.addEventListener("change", syncCompanyFields);
@@ -1616,6 +1695,177 @@ function initPassHistoryPage() {
   });
 }
 
+function initRenewPassPage() {
+  const renewSearchForm = document.getElementById("renewSearchForm");
+  const renewNameInput = document.getElementById("renewName");
+  const renewPhoneInput = document.getElementById("renewPhone");
+  const renewSearchResult = document.getElementById("renewSearchResult");
+  const renewDetails = document.getElementById("renewDetails");
+  const renewMatchChip = document.getElementById("renewMatchChip");
+  const renewAdminPassword = document.getElementById("renewAdminPassword");
+  const renewPassBtn = document.getElementById("renewPassBtn");
+  const renewPassBanner = document.getElementById("renewPassBanner");
+  const renewedPassId = document.getElementById("renewedPassId");
+  const renewedPassQr = document.getElementById("renewedPassQr");
+
+  if (!renewSearchForm || !renewPassBtn) return;
+
+  let matchedVisitor = null;
+  let renewNameSuggestTimer = null;
+
+  const setRenewVisitor = (visitor) => {
+    matchedVisitor = visitor || null;
+
+    if (!matchedVisitor) {
+      if (renewMatchChip) renewMatchChip.textContent = "No match";
+      renderDetails(renewDetails, {});
+      renewPassBtn.disabled = true;
+      return;
+    }
+
+    if (renewMatchChip) renewMatchChip.textContent = "Visitor found";
+    renderDetails(renewDetails, {
+      "Full Name": matchedVisitor?.name,
+      Phone: matchedVisitor?.phone,
+      "Visitor Type": matchedVisitor?.visitorType || "Visitor",
+      "Last Pass ID": matchedVisitor?.passId,
+      Department: matchedVisitor?.department || "-",
+      Company: matchedVisitor?.company || "-",
+      "Purpose of Visit": matchedVisitor?.visitType || "-",
+      Status: matchedVisitor?.status || "-",
+      "Last Time In": formatDateTime(matchedVisitor?.timeIn),
+      "Last Time Out": formatDateTime(matchedVisitor?.timeOut),
+    });
+    renewPassBtn.disabled = false;
+  };
+
+  const resetRenewBanner = () => {
+    if (renewPassBanner) renewPassBanner.classList.add("hidden");
+    if (renewedPassId) renewedPassId.textContent = "";
+    if (renewedPassQr) {
+      renewedPassQr.src = "";
+      renewedPassQr.classList.add("hidden");
+    }
+  };
+
+  const runLookup = async (nameRaw, phoneRaw) => {
+    const name = normalizeName(nameRaw);
+    const phone = normalizePhone(phoneRaw);
+
+    if (!name && !phone) {
+      setResult(renewSearchResult, "Enter name or mobile to fetch visitor details.", "error");
+      setRenewVisitor(null);
+      resetRenewBanner();
+      return;
+    }
+
+    try {
+      const data = await apiRequest("/checkVisitor", {
+        method: "POST",
+        body: JSON.stringify({ name, phone }),
+      });
+
+      if (!data.exists || !data.visitor) {
+        setResult(
+          renewSearchResult,
+          "No existing visitor record found. Pass cannot be renewed until at least one pass exists.",
+          "error"
+        );
+        setRenewVisitor(null);
+        resetRenewBanner();
+        return;
+      }
+
+      setRenewVisitor(data.visitor);
+      setResult(renewSearchResult, "Existing visitor found. Enter security password and click Renew Pass.", "success");
+    } catch (error) {
+      setResult(renewSearchResult, error.message, "error");
+      setRenewVisitor(null);
+      resetRenewBanner();
+    }
+  };
+
+  renewSearchForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    await runLookup(renewNameInput?.value, renewPhoneInput?.value);
+  });
+
+  if (renewNameInput) {
+    renewNameInput.addEventListener("input", () => {
+      clearTimeout(renewNameSuggestTimer);
+      const query = normalizeName(renewNameInput.value);
+      renewNameSuggestTimer = setTimeout(() => {
+        fetchNameSuggestionsForDatalist(query, "renewNameSuggestions");
+      }, 220);
+    });
+  }
+
+  renewPassBtn.addEventListener("click", async () => {
+    if (!matchedVisitor) {
+      setResult(renewSearchResult, "Fetch visitor details first.", "error");
+      return;
+    }
+
+    const adminPassword = String(renewAdminPassword?.value || "").trim();
+    if (!adminPassword) {
+      setResult(renewSearchResult, "Enter security password to renew pass.", "error");
+      return;
+    }
+
+    try {
+      const data = await apiRequest("/renewPass", {
+        method: "POST",
+        body: JSON.stringify({
+          name: matchedVisitor.name,
+          phone: matchedVisitor.phone,
+          adminPassword,
+        }),
+      });
+
+      setResult(renewSearchResult, data.message || "Gate pass renewed", "success");
+      showToast(data.message || "Gate pass renewed");
+      announceGatePassIssued();
+
+      if (renewPassBanner) renewPassBanner.classList.remove("hidden");
+      if (renewedPassId) renewedPassId.textContent = data.passId || "-";
+      if (renewedPassQr) {
+        const qrCodeDataUrl = String(data.qrCodeDataUrl || "").trim();
+        if (qrCodeDataUrl) {
+          renewedPassQr.src = qrCodeDataUrl;
+          renewedPassQr.classList.remove("hidden");
+        } else {
+          renewedPassQr.src = "";
+          renewedPassQr.classList.add("hidden");
+        }
+      }
+
+      if (data.visitor) setRenewVisitor(data.visitor);
+    } catch (error) {
+      if (error.status === 401) {
+        showToast("Unauthorized", true);
+      } else {
+        showToast(error.message, true);
+      }
+      setResult(renewSearchResult, error.message, "error");
+    }
+  });
+
+  const initialName = queryParam("name");
+  const initialPhone = queryParam("phone");
+  if (renewNameInput && initialName) renewNameInput.value = initialName;
+  if (renewPhoneInput && initialPhone) renewPhoneInput.value = initialPhone;
+
+  if (initialName || initialPhone) {
+    runLookup(initialName, initialPhone).then(() => {
+      if (renewAdminPassword) {
+        renewAdminPassword.focus();
+      }
+    });
+  } else if (renewNameInput) {
+    renewNameInput.focus();
+  }
+}
+
 function initTodayVisitorsPage() {
   const todayVisitorsBody = document.getElementById("todayVisitorsBody");
   const refreshTodayBtn = document.getElementById("refreshTodayBtn");
@@ -2127,6 +2377,9 @@ function initPage() {
       break;
     case "issue-pass":
       initIssuePassPage();
+      break;
+    case "renew-pass":
+      initRenewPassPage();
       break;
     case "validate-pass":
       initValidatePassPage();

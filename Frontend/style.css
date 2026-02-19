@@ -970,6 +970,15 @@ body[data-page="home"] .menu-card:hover .menu-icon {
   margin-top: 4px;
 }
 
+.renewed-pass-qr {
+  width: min(170px, 100%);
+  margin-top: 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(122, 220, 255, 0.5);
+  background: rgba(255, 255, 255, 0.95);
+  object-fit: contain;
+}
+
 .details-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
